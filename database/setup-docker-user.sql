@@ -1,0 +1,4 @@
+-- Local-MySQL compatibility note only. This file intentionally contains no credentials
+-- and no executable statements. Docker Compose now starts its own MySQL service.
+-- For an existing external MySQL server, create a least-privilege account manually;
+-- never commit the password or paste it into a shared script.

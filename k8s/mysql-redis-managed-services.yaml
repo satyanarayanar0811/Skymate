@@ -1,0 +1,16 @@
+# Recommended production setup: managed MySQL 8.4 and Redis 7, not in-cluster databases.
+# For local Kubernetes testing, install StatefulSets with encrypted persistent volumes,
+# backups, network policies, authentication and resource limits before exposing them.
+apiVersion: v1
+kind: Service
+metadata: {name: mysql, namespace: skymate}
+spec:
+  type: ExternalName
+  externalName: REPLACE_WITH_MANAGED_MYSQL_HOST
+---
+apiVersion: v1
+kind: Service
+metadata: {name: redis, namespace: skymate}
+spec:
+  type: ExternalName
+  externalName: REPLACE_WITH_MANAGED_REDIS_HOST

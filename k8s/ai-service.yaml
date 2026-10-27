@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: ai-service, namespace: skymate}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: ai-service}}
+  template:
+    metadata: {labels: {app: ai-service}}
+    spec:
+      containers:
+        - name: ai-service
+          image: ghcr.io/your-org/skymate-ai-service:latest
+          ports: [{containerPort: 8000}]
+          envFrom: [{configMapRef: {name: skymate-config}}, {secretRef: {name: skymate-secrets}}]
+          readinessProbe: {httpGet: {path: /ready, port: 8000}, initialDelaySeconds: 10, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: 8000}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 1000m, memory: 1Gi}}
+          securityContext: {allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 10001, readOnlyRootFilesystem: true}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: ai-service, namespace: skymate}
+spec:
+  selector: {app: ai-service}
+  ports: [{port: 8000, targetPort: 8000}]

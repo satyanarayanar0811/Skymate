@@ -1,0 +1,3 @@
+import { NextRequest, NextResponse } from 'next/server';
+export function middleware(request:NextRequest){const incoming=request.headers.get('x-request-id');const requestId=incoming&&/^[a-zA-Z0-9._-]{1,100}$/.test(incoming)?incoming:crypto.randomUUID();const response=NextResponse.next({request:{headers:new Headers(request.headers)}});response.headers.set('x-request-id',requestId);console.log(JSON.stringify({level:'info',service:'skymate-frontend',requestId,method:request.method,path:request.nextUrl.pathname}));return response;}
+export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']};

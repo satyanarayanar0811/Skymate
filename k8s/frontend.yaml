@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: frontend, namespace: skymate}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: frontend}}
+  template:
+    metadata: {labels: {app: frontend}}
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/your-org/skymate-frontend:latest
+          ports: [{containerPort: 3000}]
+          env: [{name: NEXT_PUBLIC_API_URL, value: "https://api.skymate.example.com/api"}]
+          readinessProbe: {httpGet: {path: /api/ready, port: 3000}, initialDelaySeconds: 10, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /api/health, port: 3000}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 1000m, memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 10001, readOnlyRootFilesystem: true}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: frontend, namespace: skymate}
+spec:
+  selector: {app: frontend}
+  ports: [{port: 3000, targetPort: 3000}]

@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: backend, namespace: skymate}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: backend}}
+  template:
+    metadata: {labels: {app: backend}}
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/skymate-backend:latest
+          ports: [{containerPort: 4000}]
+          envFrom: [{configMapRef: {name: skymate-config}}, {secretRef: {name: skymate-secrets}}]
+          readinessProbe: {httpGet: {path: /ready, port: 4000}, initialDelaySeconds: 10, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: 4000}, initialDelaySeconds: 20, periodSeconds: 20}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 1000m, memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 10001, readOnlyRootFilesystem: true}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: backend, namespace: skymate}
+spec:
+  selector: {app: backend}
+  ports: [{port: 4000, targetPort: 4000}]

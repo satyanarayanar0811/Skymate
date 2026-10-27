@@ -1,0 +1,5 @@
+export interface CurrencyAdapter { rate(from:string,to:string):Promise<{rate:number;provider:string}> }
+const fallback:Record<string,number>={'INR:USD':0.012,'USD:INR':83.3,'INR:EUR':0.011,'EUR:INR':90.0,'INR:SAR':0.045,'SAR:INR':22.2};
+class StaticCurrencyAdapter implements CurrencyAdapter { async rate(from:string,to:string){return {rate:fallback[`${from}:${to}`]||1,provider:'static-fallback'}} }
+class FrankfurterAdapter implements CurrencyAdapter { async rate(from:string,to:string){const r=await fetch(`https://api.frankfurter.dev/v1/latest?base=${encodeURIComponent(from)}&symbols=${encodeURIComponent(to)}`,{signal:AbortSignal.timeout(8000)});if(!r.ok)throw new Error('Currency service unavailable');const d:any=await r.json();const rate=Number(d.rates?.[to]);if(!Number.isFinite(rate)||rate<=0)throw new Error('Currency rate unavailable');return {rate,provider:'frankfurter'}} }
+export function createCurrencyAdapter():CurrencyAdapter{return (process.env.CURRENCY_PROVIDER||'frankfurter').toLowerCase()==='frankfurter'?new FrankfurterAdapter():new StaticCurrencyAdapter()}

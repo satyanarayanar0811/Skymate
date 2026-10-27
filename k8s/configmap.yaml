@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: skymate-config
+  namespace: skymate
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "airline"
+  REDIS_URL: "redis://redis:6379"
+  FRONTEND_ORIGIN: "https://skymate.example.com"
+  AI_SERVICE_URL: "http://ai-service:8000"
+  PAYMENT_PROVIDER: "mock"
+  EMAIL_PROVIDER: "mock"
+  LLM_PROVIDER: "mock"
