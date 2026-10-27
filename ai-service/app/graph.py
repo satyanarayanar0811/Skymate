@@ -160,6 +160,52 @@ def _passenger_template_reply(count: int, updated: bool = False) -> str:
     )
 
 
+_EMAIL = re.compile(r"[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+")
+_ISO_DOB = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
+_DMY_DOB = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
+_AGE = re.compile(r"\b(?:age|aged)\s*[:\-]?\s*(\d{1,3})\b|\b(\d{1,3})\s*(?:years?|yrs?)\b", re.I)
+_GENDER = re.compile(r"\b(male|female|other)\b", re.I)
+_NAME = re.compile(
+    r"\b(?:passenger\s+name|full\s+name|name)\s*(?:is|:)?\s*(.+?)"
+    r"(?=[,;\n]|\b(?:date\s+of\s+birth|dob|age|email|phone|mobile|whatsapp|male|female)\b|$)",
+    re.I,
+)
+
+
+def _age_from_dob(dob: date) -> int:
+    t = date.today()
+    return t.year - dob.year - ((t.month, t.day) < (dob.month, dob.day))
+
+
+def _freeform_passenger(text: str) -> dict[str, str]:
+    """Extract passenger fields from free-form text (no labels needed)."""
+    out: dict[str, str] = {}
+    if m := _EMAIL.search(text):
+        out["email"] = m.group(0)
+        text = text.replace(m.group(0), " ")
+    dob = None
+    try:
+        if m := _ISO_DOB.search(text):
+            dob = date(int(m[1]), int(m[2]), int(m[3]))
+            text = text.replace(m[0], " ")
+        elif m := _DMY_DOB.search(text):
+            dob = date(int(m[3]), int(m[2]), int(m[1]))
+            text = text.replace(m[0], " ")
+    except ValueError:
+        dob = None
+    if dob:
+        out["birth"] = f"{_age_from_dob(dob)} (DOB {dob.isoformat()})"
+    elif m := _AGE.search(text):
+        out["birth"] = m.group(1) or m.group(2)
+    if m := re.search(r"(?<!\d)\+?\d[\d\s\-]{8,15}\d(?!\d)", text):
+        out["phone"] = m.group(0).strip()
+    if m := _GENDER.search(text):
+        out["gender"] = m.group(1).title()
+    if m := _NAME.search(text):
+        out["name"] = m.group(1).strip(" ,.;")
+    return out
+
+
 def _parse_passenger_details(text: str, expected_count: int) -> tuple[list[dict[str, str]], list[str]]:
     """Read the labeled passenger form and report required fields that are missing."""
     blocks: dict[int, list[str]] = {}
@@ -201,6 +247,11 @@ def _parse_passenger_details(text: str, expected_count: int) -> tuple[list[dict[
                 values["email"] = value
             elif "mobile" in key or "whatsapp" in key or "phone" in key:
                 values["phone"] = value
+
+        # Free-form fallback: fill anything the labeled parser could not find.
+        for field, found in _freeform_passenger(block_text).items():
+            if not values[field]:
+                values[field] = found
 
         label_prefix = f"Passenger {index}: "
         for key, label in (("name", "full name"), ("birth", "age"),
@@ -246,18 +297,13 @@ async def understand(state: AgentState) -> AgentState:
                 }
                 break
 
-    # A newly stated route starts a fresh search request. Do not silently reuse
-    # a date, passenger count, or cabin from an older search in the same chat.
-    
-    has_new_route = bool(
-        extracted.get("departure_city")
-        and extracted.get("arrival_city")
-        )
-    if has_new_route:
-    # A new route starts a completely fresh search and booking flow.
+    # A newly stated route starts a completely fresh search and booking flow.
     # Do not carry forward the previous date, selected flight, or draft.
+    has_new_route = bool(
+        extracted.get("departure_city") and extracted.get("arrival_city")
+    )
+    if has_new_route:
         prior_context = {}
-
 
     # A date/passenger/cabin/count-only follow-up continues an existing search.
     if (
