@@ -11,5 +11,8 @@ export const pool = mysql.createPool({
   queueLimit: 0,
   decimalNumbers: true,
   enableKeepAlive: true,
-  timezone: 'Z'
+  timezone: 'Z',
+  ssl: process.env.MYSQL_SSL === 'true'
+    ? { minVersion: 'TLSv1.2', rejectUnauthorized: true }
+    : undefined
 });
