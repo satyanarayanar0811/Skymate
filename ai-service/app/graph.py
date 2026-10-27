@@ -111,7 +111,28 @@ def _deduplicate_offers(offers: list[Any]) -> list[dict[str, Any]]:
             continue
         seen.add(key)
         unique.append(offer)
-    return unique
+    return _cheapest_per_itinerary(unique)
+
+
+def _cheapest_per_itinerary(offers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Providers return one offer per fare brand for the same flight.
+    Keep only the cheapest fare for each physical itinerary."""
+    best: dict[tuple[Any, ...], dict[str, Any]] = {}
+    order: list[tuple[Any, ...]] = []
+    for offer in offers:
+        key = (
+            str(offer.get("airline", "")).strip().casefold(),
+            str(offer.get("flightNumber", offer.get("flightNo", ""))).strip().casefold(),
+            str(offer.get("departureAt", offer.get("departure_at", ""))).strip(),
+            str(offer.get("arrivalAt", offer.get("arrival_at", ""))).strip(),
+            str(offer.get("stops", "")).strip(),
+        )
+        if key not in best:
+            best[key] = offer
+            order.append(key)
+        elif _fare_sort_key(offer) < _fare_sort_key(best[key]):
+            best[key] = offer
+    return [best[k] for k in order]
 
 
 def _display_cabin(value: Any) -> str:
